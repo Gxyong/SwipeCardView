@@ -1,4 +1,4 @@
-package com.gxy.swipecardview;
+package com.gxy.java;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -16,6 +16,8 @@ import android.view.ViewConfiguration;
 import android.view.animation.Interpolator;
 import android.widget.LinearLayout;
 import android.widget.Scroller;
+
+import com.gxy.swipecard.R;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.gxy.swipecardview;
+package com.gxy.java;
 
 import android.view.View;
 
