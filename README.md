@@ -18,6 +18,8 @@ allprojects {
   
   
   ##1、 card_view:cardUseCompatPadding="true"
+  
+  
   ##2、com.gxy.java.SwipeCardsView 属性设置： android:clipChildren="true"
   
   #有空再添加卡片上的视频
