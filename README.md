@@ -22,5 +22,10 @@ allprojects {
   
   ##2、com.gxy.java.SwipeCardsView 属性设置： android:clipChildren="true"
   
-  #有空再添加卡片上的视频
+  ##3、   card:alphaOffsetStep="20"
+          
+	  card:yOffsetStep="35dp" //yOffsetStep值越大，步长越大，层叠效果越明显
   
+  
+  #有空再添加卡片上的视频
+
