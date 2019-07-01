@@ -4,15 +4,15 @@
 #使用
 
 allprojects {
-		repositories {
-			...
-			maven { url 'https://jitpack.io' }
-		}
+	repositories {
+	...
+	maven { url 'https://jitpack.io' }
 	}
+}
+
   dependencies {
-	        implementation 'com.github.Gxyong:SwipeCardView:1.0'
+	implementation 'com.github.Gxyong:SwipeCardView:1.0'
 	}
-	
 	
   #Android 要想实现滑动卡片堆叠效果，在CardView卡片必须设置属性：
   
