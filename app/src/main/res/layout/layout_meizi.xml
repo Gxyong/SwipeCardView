@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <com.haosheng.party.widget.cardview.SwipeCardsView
+        android:id="@+id/swipCardsView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="10dp"
+        android:clipChildren="true"
+        card:alphaOffsetStep="20"
+        card:scaleOffsetStep="0.08"
+        card:yOffsetStep="30dp" />
+
+</LinearLayout>
