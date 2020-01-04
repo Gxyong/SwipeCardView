@@ -44,7 +44,7 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
     private var scaleOffsetStep = 0f // view叠加缩放的步长
     private var alphaOffsetStep = 0 //view叠加透明度的步长
 
-    private var mCardsSlideListener: com.gxy.java.SwipeCardsView.CardsSlideListener? = null // 回调接口
+    private var mCardsSlideListener: CardsSlideListener? = null // 回调接口
     private var mCount: Int = 0 // 卡片的数量
     private var mShowingIndex = 0 // 当前正在显示的卡片位置
     private val btnListener: View.OnClickListener
@@ -362,7 +362,7 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
     }
 
 
-    fun startScrollTopView(finalLeft: Int, finalTop: Int, duration: Int, flyType: com.gxy.java.SwipeCardsView.SlideType) {
+    fun startScrollTopView(finalLeft: Int, finalTop: Int, duration: Int, flyType: SlideType) {
         val topView = topView
         if (topView == null) {
             mScrolling = false
@@ -381,7 +381,7 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
         } else {
             mScrolling = false
         }
-        if (flyType != com.gxy.java.SwipeCardsView.SlideType.NONE && mCardsSlideListener != null) {
+        if (flyType != SlideType.NONE && mCardsSlideListener != null) {
             mCardsSlideListener!!.onCardVanish(mShowingIndex, flyType)
         }
     }
@@ -646,7 +646,7 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
     private fun onTopViewReleased(changedView: View, xvel: Float, yvel: Float) {
         var finalX = initLeft
         var finalY = initTop
-        var flyType: com.gxy.java.SwipeCardsView.SlideType = com.gxy.java.SwipeCardsView.SlideType.NONE
+        var flyType: SlideType = SlideType.NONE
 
         var dx = changedView.left - initLeft
         val dy = changedView.top - initTop
@@ -657,11 +657,11 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
         if (dx > X_DISTANCE_THRESHOLD || xvel > X_VEL_THRESHOLD && dx > 0) {//向右边滑出
             finalX = mWidth
             finalY = dy * (mCardWidth + initLeft) / dx + initTop
-            flyType = com.gxy.java.SwipeCardsView.SlideType.RIGHT
+            flyType =SlideType.RIGHT
         } else if (dx < -X_DISTANCE_THRESHOLD || xvel < -X_VEL_THRESHOLD && dx < 0) {//向左边滑出
             finalX = -mCardWidth
             finalY = dy * (mCardWidth + initLeft) / -dx + dy + initTop
-            flyType = com.gxy.java.SwipeCardsView.SlideType.LEFT
+            flyType = SlideType.LEFT
         }
 
         if (finalY > mHeight) {
@@ -676,14 +676,14 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
      * use this method to Slide the card out of the screen
      *
      */
-    fun slideCardOut(type: com.gxy.java.SwipeCardsView.SlideType) {
+    fun slideCardOut(type: SlideType) {
         if (!canMoveCard()) {
             return
         }
         mScroller.abortAnimation()
         resetViewGroup()
         val topview = topView ?: return
-        if (releasedViewList.contains(topview) || type == com.gxy.java.SwipeCardsView.SlideType.NONE) {
+        if (releasedViewList.contains(topview) || type == SlideType.NONE) {
             return
         }
         var finalX = 0
@@ -701,7 +701,7 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
      *
      * @param cardsSlideListener 回调接口
      */
-    fun setCardsSlideListener(cardsSlideListener: com.gxy.java.SwipeCardsView.CardsSlideListener) {
+    fun setCardsSlideListener(cardsSlideListener: CardsSlideListener) {
         this.mCardsSlideListener = cardsSlideListener
     }
 
@@ -720,9 +720,9 @@ class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, 
          * 卡片飞向两侧回调
          *
          * @param index 飞向两侧的卡片数据index
-         * @param type  飞向哪一侧[com.gxy.java.SwipeCardsView.SlideType.LEFT]或[com.gxy.java.SwipeCardsView.SlideType.RIGHT]
+         * @param type  飞向哪一侧[SlideType.LEFT]或[SlideType.RIGHT]
          */
-        fun onCardVanish(index: Int, type: com.gxy.java.SwipeCardsView.SlideType)
+        fun onCardVanish(index: Int, type: SlideType)
 
         /**
          * 卡片点击事件
