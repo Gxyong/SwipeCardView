@@ -3,10 +3,11 @@ package com.gxy.kotlin
 import android.view.View
 
 /**
- *    时间: 2019-06-27 18:56
- *    版本: 1.0
- *    描述:kotlin
- *    修改说明:
+ * @Author: 文西
+ * 时间:     2020/1/4$ 20:54$
+ * 版本:
+ * 描述: dec
+ * 修改说明:
  */
 abstract class BaseCardAdapter<T> {
     /**
@@ -28,9 +29,7 @@ abstract class BaseCardAdapter<T> {
      * @return
      */
     val visibleCardCount: Int
-        get() {
-            return 3
-        }
+        get() = 3
 
     /**
      * 将卡片和数据绑定在一起

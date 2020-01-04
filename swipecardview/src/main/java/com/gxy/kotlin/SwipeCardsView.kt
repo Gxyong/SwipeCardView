@@ -1,53 +1,57 @@
 package com.gxy.kotlin
 
+
 import android.annotation.TargetApi
 import android.content.Context
+import android.content.res.TypedArray
 import android.graphics.Rect
 import android.os.Build
 import android.support.v4.view.ViewCompat
 import android.util.AttributeSet
-import android.view.*
-import android.view.View.OnClickListener
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.VelocityTracker
+import android.view.View
+import android.view.ViewConfiguration
 import android.view.animation.Interpolator
 import android.widget.LinearLayout
 import android.widget.Scroller
+
 import com.gxy.swipecard.R
-import java.util.*
+
+import java.util.ArrayList
 
 /**
- *    时间: 2019-06-27 18:57
- *    版本: 1.0
- *    描述:
- *    修改说明:
+ * @Author: 文西
+ * 时间:     2020/1/4$ 20:04$
+ * 版本:
+ * 描述: dec
+ * 修改说明:
  */
-class SwipeCardsView : LinearLayout {
 
+class SwipeCardsView constructor(context: Context, attrs: AttributeSet? = null, defStyle: Int = 0) : LinearLayout(context, attrs, defStyle) {
     private val viewList = ArrayList<View>() // 存放的是每一层的view，从顶到底
     private val releasedViewList = ArrayList<View>() // 手指松开后存放的view列表
 
-    private var initLeft = 0;
+    private var initLeft = 0
     private var initTop = 0 // 正常状态下 topView的left和top
     private var mWidth = 0 // swipeCardsView的宽度
     private var mHeight = 0 // swipeCardsView的高度
     private var mCardWidth = 0 // 每一个子View对应的宽度
 
-    private val MAX_SLIDE_DISTANCE_LINKAGE = 400 // 水平距离+垂直距离
-
     private var yOffsetStep = 0 // view叠加垂直偏移量的步长
     private var scaleOffsetStep = 0f // view叠加缩放的步长
     private var alphaOffsetStep = 0 //view叠加透明度的步长
 
-    private val X_VEL_THRESHOLD = 900
-    private val X_DISTANCE_THRESHOLD = 300
-
-    private var mCardsSlideListener: CardsSlideListener? = null // 回调接口
+    private var mCardsSlideListener: com.gxy.java.SwipeCardsView.CardsSlideListener? = null // 回调接口
     private var mCount: Int = 0 // 卡片的数量
     private var mShowingIndex = 0 // 当前正在显示的卡片位置
     private val btnListener: View.OnClickListener
 
     private var mAdapter: BaseCardAdapter<*>? = null
     private val mScroller: Scroller
-    private var mTouchSlop: Int = 0
+    private val mTouchSlop: Int
     private var mLastY = -1 // save event y
     private var mLastX = -1 // save event x
     private var mInitialMotionY: Int = 0
@@ -55,8 +59,8 @@ class SwipeCardsView : LinearLayout {
     private val SCROLL_DURATION = 300 // scroll back duration
     private var hasTouchTopView: Boolean = false
     private var mVelocityTracker: VelocityTracker? = null
-    private var mMaxVelocity: Float = 0.0f
-    private var mMinVelocity: Float = 0.0f
+    private val mMaxVelocity: Float
+    private val mMinVelocity: Float
     private var isIntercepted = false
     private var isTouching = false
     private var tempShowingIndex = -1
@@ -66,14 +70,21 @@ class SwipeCardsView : LinearLayout {
      */
     private var mScrolling = false
 
-    constructor(context: Context) : this(context, null) {
+    private var mWaitRefresh = false
 
-    }
+    private var mRetainLastCard = false
 
-    constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0) {
-    }
+    private var mEnableSwipe = true
 
-    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
+    private var mLastMoveEvent: MotionEvent? = null
+    private var mHasSendCancelEvent = false
+
+    private val topView: View?
+        get() = if (viewList.size > 0) {
+            viewList[0]
+        } else null
+
+    init {
         val a = context.obtainStyledAttributes(attrs, R.styleable.SwipCardsView)
         yOffsetStep = a.getDimension(R.styleable.SwipCardsView_yOffsetStep, yOffsetStep.toFloat()).toInt()
         alphaOffsetStep = a.getInt(R.styleable.SwipCardsView_alphaOffsetStep, alphaOffsetStep)
@@ -92,22 +103,12 @@ class SwipeCardsView : LinearLayout {
         mMinVelocity = ViewConfiguration.get(getContext()).scaledMinimumFlingVelocity.toFloat()
     }
 
-
-    /**
-     * 为mScroller定义动画曲线的插值器
-     */
-    private val sInterpolator = object : Interpolator {
-
-        private val mTension = 1.6f
-
-        override fun getInterpolation(t: Float): Float {
-            var t = t
-            t -= 1.0f
-            return t * t * ((mTension + 1) * t + mTension) + 1.0f
-        }
-    }
-
     private fun getCardLayoutId(layoutid: Int): Int {
+        val resourceTypeName = context.resources.getResourceTypeName(layoutid)
+        if (resourceTypeName!="layout") {
+            val errorMsg = context.resources.getResourceName(layoutid) + " is a illegal layoutid , please check your layout id first "
+            throw RuntimeException(errorMsg)
+        }
         return layoutid
     }
 
@@ -118,8 +119,6 @@ class SwipeCardsView : LinearLayout {
         }
         cardview.visibility = View.VISIBLE
     }
-
-    private var mWaitRefresh = false
 
     /**
      * 刷新ui
@@ -141,9 +140,9 @@ class SwipeCardsView : LinearLayout {
         }
         mShowingIndex = index
         mCount = mAdapter!!.count
-
+        //        cardVisibleCount = mAdapter.getVisibleCardCount();
         cardVisibleCount = Math.min(cardVisibleCount, mCount)
-        for (i in mShowingIndex..mShowingIndex + cardVisibleCount) {
+        for (i in mShowingIndex .. mShowingIndex + cardVisibleCount) {
             val childView = viewList[i - mShowingIndex] ?: return
             if (i < mCount) {
                 bindCardData(i, childView)
@@ -172,7 +171,7 @@ class SwipeCardsView : LinearLayout {
         mCount = mAdapter!!.count
         var cardVisibleCount = mAdapter!!.visibleCardCount
         cardVisibleCount = Math.min(cardVisibleCount, mCount)
-        for (i in mShowingIndex..mShowingIndex + cardVisibleCount) {
+        for (i in mShowingIndex .. mShowingIndex + cardVisibleCount) {
             val childView = LayoutInflater.from(context).inflate(getCardLayoutId(mAdapter!!.cardLayoutId), this, false)
                     ?: return
             if (i < mCount) {
@@ -189,8 +188,6 @@ class SwipeCardsView : LinearLayout {
         }
     }
 
-    private var mRetainLastCard = false
-
     /**
      * whether retain last card
      *
@@ -203,8 +200,6 @@ class SwipeCardsView : LinearLayout {
     private fun canMoveCard(): Boolean {
         return !mRetainLastCard || mRetainLastCard && mShowingIndex != mCount - 1
     }
-
-    private var mEnableSwipe = true
 
     fun enableSwipe(enable: Boolean) {
         mEnableSwipe = enable
@@ -262,11 +257,11 @@ class SwipeCardsView : LinearLayout {
                 isTouching = false
                 isIntercepted = false
                 mHasSendCancelEvent = false
-                mVelocityTracker?.computeCurrentVelocity(1000, mMaxVelocity)
-                val velocityX = mVelocityTracker?.getXVelocity()
-                val velocityY = mVelocityTracker?.getYVelocity()
-                val xvel = clampMag(velocityX!!, mMinVelocity, mMaxVelocity)
-                val yvel = clampMag(velocityY!!, mMinVelocity, mMaxVelocity)
+                mVelocityTracker!!.computeCurrentVelocity(1000, mMaxVelocity)
+                val velocityX = mVelocityTracker!!.xVelocity
+                val velocityY = mVelocityTracker!!.yVelocity
+                val xvel = clampMag(velocityX, mMinVelocity, mMaxVelocity)
+                val yvel = clampMag(velocityY, mMinVelocity, mMaxVelocity)
 
                 releaseTopView(xvel, yvel)
                 releaseVelocityTracker()
@@ -274,9 +269,6 @@ class SwipeCardsView : LinearLayout {
         }//                invalidate();
         return super.dispatchTouchEvent(ev)
     }
-
-    private var mLastMoveEvent: MotionEvent? = null
-    private var mHasSendCancelEvent = false
 
     private fun sendCancelEvent() {
         if (!mHasSendCancelEvent) {
@@ -291,15 +283,50 @@ class SwipeCardsView : LinearLayout {
         }
     }
 
+
+    //    @Override
+    //    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+    //        boolean ret = false;
+    //        int canvasRestore = -1;
+    //        int index = indexOfChild(child);
+    //        View topView = getTopView();
+    //        LogUtil.e("index=" + index + " is topview " + (topView == child));
+    //        if (topView != child) {
+    //            Rect thisRect = new Rect();
+    //            getGlobalVisibleRect(thisRect);
+    //            Rect childRect = new Rect();
+    //            child.getGlobalVisibleRect(childRect);
+    //            childRect.set(childRect.left - thisRect.left, childRect.top - thisRect.top, childRect.left - thisRect.left + childRect.width(), childRect.height() + childRect.top - thisRect.top);
+    //            Rect topRect = new Rect();
+    //            topView.getGlobalVisibleRect(topRect);
+    //            topRect.set(topRect.left - thisRect.left, topRect.top - thisRect.top, topRect.left - thisRect.left + topRect.width(), topRect.height() + topRect.top - thisRect.top);
+    //            Rect newrect = new Rect(thisRect.left, topRect.bottom, thisRect.right, child.getBottom());
+    //            canvasRestore = canvas.save();
+    //            canvas.clipRect(topRect, Region.Op.XOR);
+    //
+    ////            Paint mPaint = new Paint();
+    ////            mPaint.setAntiAlias(true);
+    ////            mPaint.setStyle(Paint.Style.STROKE);
+    ////            mPaint.setColor(Color.RED);
+    ////            canvas.drawRect(newrect, mPaint);
+    //            LogUtil.e("test index=" + index + ";newrect=" + newrect.toShortString() + "child.bottom=" + child.getBottom() + ";thisRect=" + thisRect.toShortString() + ";canvas.getClipBounds()=" + canvas.getClipBounds().toShortString());
+    //        }
+    //        ret = super.drawChild(canvas, child, drawingTime);
+    //        if (canvasRestore != -1) {
+    //            canvas.restoreToCount(canvasRestore);
+    //        }
+    //        return ret;
+    //    }
+
     fun dispatchTouchEventSupper(e: MotionEvent): Boolean {
         return super.dispatchTouchEvent(e)
     }
 
     private fun releaseTopView(xvel: Float, yvel: Float) {
         mScrolling = true
-        val topView = getTopView()
+        val topView = topView
         if (topView != null && canMoveCard() && mEnableSwipe) {
-            onTopViewReleased(topView!!, xvel, yvel)
+            onTopViewReleased(topView, xvel, yvel)
         }
     }
 
@@ -310,7 +337,7 @@ class SwipeCardsView : LinearLayout {
      * @return
      */
     private fun isTouchTopView(ev: MotionEvent): Boolean {
-        val topView = getTopView()
+        val topView = topView
         if (topView != null && topView.visibility == View.VISIBLE) {
             val bounds = Rect()
             topView.getGlobalVisibleRect(bounds)
@@ -326,7 +353,7 @@ class SwipeCardsView : LinearLayout {
     }
 
     private fun moveTopView(deltaX: Int, deltaY: Int) {
-        val topView = getTopView()
+        val topView = topView
         if (topView != null) {
             topView.offsetLeftAndRight(deltaX)
             topView.offsetTopAndBottom(deltaY)
@@ -334,15 +361,9 @@ class SwipeCardsView : LinearLayout {
         }
     }
 
-    private fun getTopView(): View? {
-        return if (viewList.size > 0) {
-            viewList[0]
-        } else null
-    }
 
-
-    fun startScrollTopView(finalLeft: Int, finalTop: Int, duration: Int, flyType: SlideType) {
-        val topView = getTopView()
+    fun startScrollTopView(finalLeft: Int, finalTop: Int, duration: Int, flyType: com.gxy.java.SwipeCardsView.SlideType) {
+        val topView = topView
         if (topView == null) {
             mScrolling = false
             return
@@ -360,7 +381,7 @@ class SwipeCardsView : LinearLayout {
         } else {
             mScrolling = false
         }
-        if (flyType != SlideType.NONE && mCardsSlideListener != null) {
+        if (flyType != com.gxy.java.SwipeCardsView.SlideType.NONE && mCardsSlideListener != null) {
             mCardsSlideListener!!.onCardVanish(mShowingIndex, flyType)
         }
     }
@@ -374,7 +395,7 @@ class SwipeCardsView : LinearLayout {
         if (null == mVelocityTracker) {
             mVelocityTracker = VelocityTracker.obtain()
         }
-        mVelocityTracker?.addMovement(event)
+        mVelocityTracker!!.addMovement(event)
     }
 
     /**
@@ -385,8 +406,8 @@ class SwipeCardsView : LinearLayout {
      */
     private fun releaseVelocityTracker() {
         if (null != mVelocityTracker) {
-            mVelocityTracker?.clear()
-            mVelocityTracker?.recycle()
+            mVelocityTracker!!.clear()
+            mVelocityTracker!!.recycle()
             mVelocityTracker = null
         }
     }
@@ -418,7 +439,7 @@ class SwipeCardsView : LinearLayout {
 
     private fun measureChildrenWithMargins(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val size = childCount
-        for (i in 0..size) {
+        for (i in 0 .. size) {
             val child = getChildAt(i)
             if (child.visibility != View.GONE) {
                 measureChildWithMargins(child, widthMeasureSpec, 0, heightMeasureSpec, 0)
@@ -434,7 +455,7 @@ class SwipeCardsView : LinearLayout {
         if (size == 0) {
             return
         }
-        for (i in 0..size) {
+        for (i in 0 .. size) {
             val child = viewList[i]
             layoutChild(child, i)
         }
@@ -486,7 +507,7 @@ class SwipeCardsView : LinearLayout {
 
     override fun computeScroll() {
         if (mScroller.computeScrollOffset()) {
-            val topView = getTopView() ?: return
+            val topView = topView ?: return
             val x = mScroller.currX
             val y = mScroller.currY
             val dx = x - topView.left
@@ -522,7 +543,7 @@ class SwipeCardsView : LinearLayout {
                 refreshUI(tempShowingIndex)
             }
             if (viewList.size != 0) {
-                val topView = getTopView()
+                val topView = topView
                 if (topView != null) {
                     if (topView.left != initLeft || topView.top != initTop) {
                         topView.offsetLeftAndRight(initLeft - topView.left)
@@ -544,7 +565,8 @@ class SwipeCardsView : LinearLayout {
             removeViewInLayout(changedView)
             addViewInLayout(changedView, 0, changedView.layoutParams, true)
             requestLayout()
-
+            //            removeView(changedView);
+            //            addView(changedView,0);
             if (mWaitRefresh) {
                 mWaitRefresh = false
                 val index = ++tempShowingIndex
@@ -582,7 +604,7 @@ class SwipeCardsView : LinearLayout {
         val distance = Math.abs(changeViewTop - initTop) + Math.abs(changeViewLeft - initLeft)
         val rate = distance / MAX_SLIDE_DISTANCE_LINKAGE.toFloat()
 
-        for (i in 1..viewList.size) {
+        for (i in 1 .. viewList.size) {
             var rate3 = rate - 0.2f * i
             if (rate3 > 1) {
                 rate3 = 1f
@@ -624,7 +646,7 @@ class SwipeCardsView : LinearLayout {
     private fun onTopViewReleased(changedView: View, xvel: Float, yvel: Float) {
         var finalX = initLeft
         var finalY = initTop
-        var flyType = SlideType.NONE
+        var flyType: com.gxy.java.SwipeCardsView.SlideType = com.gxy.java.SwipeCardsView.SlideType.NONE
 
         var dx = changedView.left - initLeft
         val dy = changedView.top - initTop
@@ -635,11 +657,11 @@ class SwipeCardsView : LinearLayout {
         if (dx > X_DISTANCE_THRESHOLD || xvel > X_VEL_THRESHOLD && dx > 0) {//向右边滑出
             finalX = mWidth
             finalY = dy * (mCardWidth + initLeft) / dx + initTop
-            flyType = SlideType.RIGHT
+            flyType = com.gxy.java.SwipeCardsView.SlideType.RIGHT
         } else if (dx < -X_DISTANCE_THRESHOLD || xvel < -X_VEL_THRESHOLD && dx < 0) {//向左边滑出
             finalX = -mCardWidth
             finalY = dy * (mCardWidth + initLeft) / -dx + dy + initTop
-            flyType = SlideType.LEFT
+            flyType = com.gxy.java.SwipeCardsView.SlideType.LEFT
         }
 
         if (finalY > mHeight) {
@@ -654,41 +676,23 @@ class SwipeCardsView : LinearLayout {
      * use this method to Slide the card out of the screen
      *
      */
-    fun slideCardOut(type: SlideType) {
+    fun slideCardOut(type: com.gxy.java.SwipeCardsView.SlideType) {
         if (!canMoveCard()) {
             return
         }
         mScroller.abortAnimation()
         resetViewGroup()
-        val topview = getTopView() ?: return
-        if (releasedViewList.contains(topview) || type == SlideType.NONE) {
+        val topview = topView ?: return
+        if (releasedViewList.contains(topview) || type == com.gxy.java.SwipeCardsView.SlideType.NONE) {
             return
         }
         var finalX = 0
         when (type) {
-            SlideType.LEFT -> finalX = -mCardWidth
-            SlideType.RIGHT -> finalX = mWidth
+            SwipeCardsView.SlideType.LEFT -> finalX = -mCardWidth
+            SwipeCardsView.SlideType.RIGHT -> finalX = mWidth
         }
         if (finalX != 0) {
             startScrollTopView(finalX, initTop + mHeight, SCROLL_DURATION, type)
-        }
-    }
-
-    companion object {
-        fun resolveSizeAndState(size: Int, measureSpec: Int, childMeasuredState: Int): Int {
-            var result = size
-            val specMode = MeasureSpec.getMode(measureSpec)
-            val specSize = MeasureSpec.getSize(measureSpec)
-            when (specMode) {
-                MeasureSpec.UNSPECIFIED -> result = size
-                MeasureSpec.AT_MOST -> if (specSize < size) {
-                    result = specSize or View.MEASURED_STATE_TOO_SMALL
-                } else {
-                    result = size
-                }
-                MeasureSpec.EXACTLY -> result = specSize
-            }
-            return result or (childMeasuredState and View.MEASURED_STATE_MASK)
         }
     }
 
@@ -697,7 +701,7 @@ class SwipeCardsView : LinearLayout {
      *
      * @param cardsSlideListener 回调接口
      */
-    fun setCardsSlideListener(cardsSlideListener: CardsSlideListener) {
+    fun setCardsSlideListener(cardsSlideListener: com.gxy.java.SwipeCardsView.CardsSlideListener) {
         this.mCardsSlideListener = cardsSlideListener
     }
 
@@ -716,9 +720,9 @@ class SwipeCardsView : LinearLayout {
          * 卡片飞向两侧回调
          *
          * @param index 飞向两侧的卡片数据index
-         * @param type  飞向哪一侧[SlideType.LEFT]或[SlideType.RIGHT]
+         * @param type  飞向哪一侧[com.gxy.java.SwipeCardsView.SlideType.LEFT]或[com.gxy.java.SwipeCardsView.SlideType.RIGHT]
          */
-        fun onCardVanish(index: Int, type: SlideType)
+        fun onCardVanish(index: Int, type: com.gxy.java.SwipeCardsView.SlideType)
 
         /**
          * 卡片点击事件
@@ -738,5 +742,43 @@ class SwipeCardsView : LinearLayout {
      */
     enum class SlideType {
         LEFT, RIGHT, NONE
+    }
+
+    companion object {
+
+        private val MAX_SLIDE_DISTANCE_LINKAGE = 400 // 水平距离+垂直距离
+
+        private val X_VEL_THRESHOLD = 900
+        private val X_DISTANCE_THRESHOLD = 300
+
+        /**
+         * Interpolator defining the animation curve for mScroller
+         */
+        private val sInterpolator = object : Interpolator {
+
+            private val mTension = 1.6f
+
+            override fun getInterpolation(t: Float): Float {
+                var t = t
+                t -= 1.0f
+                return t * t * ((mTension + 1) * t + mTension) + 1.0f
+            }
+        }
+
+        fun resolveSizeAndState(size: Int, measureSpec: Int, childMeasuredState: Int): Int {
+            var result = size
+            val specMode = View.MeasureSpec.getMode(measureSpec)
+            val specSize = View.MeasureSpec.getSize(measureSpec)
+            when (specMode) {
+                View.MeasureSpec.UNSPECIFIED -> result = size
+                View.MeasureSpec.AT_MOST -> if (specSize < size) {
+                    result = specSize or View.MEASURED_STATE_TOO_SMALL
+                } else {
+                    result = size
+                }
+                View.MeasureSpec.EXACTLY -> result = specSize
+            }
+            return result or (childMeasuredState and View.MEASURED_STATE_MASK)
+        }
     }
 }
